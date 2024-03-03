@@ -55,12 +55,16 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _getContacts();
     _getInstalledApps();
+    initPlatformState();
+    startListening();
   }
 
 
   void onData(NotificationEvent event) async {
     AppInfo notif = await InstalledApps.getAppInfo(event?.packageName ?? '');
-    if(monitoredApps.contains(notif))
+    int index = monitoredApps.indexWhere((obj) => obj.packageName == notif.packageName);
+    print(monitoredApps);
+    if(index != -1)
     {
       String contactName = event?.title ?? '';
       print(contactName);
@@ -367,7 +371,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     padding: const EdgeInsets.fromLTRB(0, 0, 20, 0),
                     child: Image.memory(appId.icon!, width: 30),
                   ),
-                  Text(appId.name),
+                  Flexible(child: Text(appId.name, overflow: TextOverflow.fade)),
                 ],
               ),
               trailing: Checkbox(
