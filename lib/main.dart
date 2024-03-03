@@ -9,7 +9,7 @@ import 'package:flutter_notification_listener/flutter_notification_listener.dart
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'dart:io' as io;
-import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:record_mp3/record_mp3.dart';
 import 'package:path_provider/path_provider.dart';
@@ -103,8 +103,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 await sink.addStream(response.stream);
                 await sink.close();
                 final player = AudioPlayer();
-                await player.play(DeviceFileSource('${resFilePath}'));
-                await player.dispose();
+                await player.setUrl('file://${resFilePath}');
+                await player.play();
+                await player.stop();
               }
             });
           }
