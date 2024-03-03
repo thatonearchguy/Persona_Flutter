@@ -1,6 +1,6 @@
 # Persona
 
-![](assets/images/logo.png)
+![](assets/images/PersonaLogo.png)
 
 ## Revolutionising text to speech
 
