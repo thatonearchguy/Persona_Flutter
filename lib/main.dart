@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -13,17 +14,18 @@ import 'package:file_picker/file_picker.dart';
 import 'package:record_mp3/record_mp3.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:installed_apps/installed_apps.dart';
+import 'dart:isolate';
 
 void main() {
   runApp(MyApp());
 }
 
-
 @pragma('vm:entry-point')
-void _callback(NotificationEvent evt) {
-    // persist data immediately
-    
-
+  void _callback(NotificationEvent evt) {
+      // persist data immediately
+    final SendPort? send = IsolateNameServer.lookupPortByName("_listener_");
+    if(send == null) print("can't find sender");
+    send?.send(evt);
 }
 
 class MyApp extends StatelessWidget {
@@ -50,6 +52,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   }
 
+  ReceivePort port = ReceivePort();
+
   @override
   void initState() {
     super.initState();
@@ -59,10 +63,10 @@ class _MyHomePageState extends State<MyHomePage> {
     startListening();
   }
 
+  
 
   void onData(NotificationEvent event) async {
-    AppInfo notif = await InstalledApps.getAppInfo(event?.packageName ?? '');
-    int index = monitoredApps.indexWhere((obj) => obj.packageName == notif.packageName);
+    int index = monitoredApps.indexWhere((obj) => obj.packageName == event.packageName);
     print(monitoredApps);
     if(index != -1)
     {
@@ -77,7 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
             String rawNote = c.notes.last.note;
             String filePath = '';
             int colindex = rawNote.indexOf(":");
-            filePath = rawNote.substring(colindex+1).trim();
+            filePath = '${await getFilePath()}${rawNote.substring(colindex+1).trim()}';
             var request = new http.MultipartRequest("POST", Uri?.tryParse("http://juan289flerovium.pythonanywhere.com/") ?? Uri());
             request.fields['text'] = event?.text ?? "";
             request.files.add(await http.MultipartFile.fromPath(
@@ -89,14 +93,17 @@ class _MyHomePageState extends State<MyHomePage> {
               if(response.statusCode == 200)
               {
                 print ("Success!");
-                String resFilePath = 'res${filePath}';
-                var transferredAudio = io.File('someFile');
+                var d = io.Directory('${await getFilePath()}/res/');
+                if (!d.existsSync()) {
+                  d.createSync(recursive: true);
+                }
+                String resFilePath = '${await getFilePath()}/res/${c.displayName}001.mp3';
+                var transferredAudio = io.File(resFilePath);
                 io.IOSink sink = transferredAudio.openWrite();
                 await sink.addStream(response.stream);
                 await sink.close();
                 final player = AudioPlayer();
-                final duration = await player.setSourceUrl('file://${resFilePath}');
-                await player.resume();
+                await player.play(DeviceFileSource('${resFilePath}'));
                 await player.dispose();
               }
             });
@@ -108,7 +115,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> initPlatformState() async {
       NotificationsListener.initialize(callbackHandle: _callback);
-      NotificationsListener.receivePort?.listen((evt) => onData(evt));
+      IsolateNameServer.removePortNameMapping("_listener_");
+      IsolateNameServer.registerPortWithName(port.sendPort, "_listener_");
+      port.listen((evt) => onData(evt));
   }
 
 
@@ -155,7 +164,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<String> getFilePath() async {
     io.Directory storageDirectory = await getApplicationDocumentsDirectory();
-    String sdPath = '${storageDirectory.path}/record';
+    String sdPath = '${storageDirectory.path}';
     var d = io.Directory(sdPath);
     if (!d.existsSync()) {
       d.createSync(recursive: true);
@@ -214,7 +223,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
                         if(status == PermissionStatus.granted)
                         {
-                          RecordMp3.instance.start('$recordPath/${selectedContact.displayName.trim()}001.mp3', (type){});
+                          RecordMp3.instance.start('$recordPath/record/${selectedContact.displayName.trim()}001.mp3', (type){});
                           setState(() {
                             isRecording = true;
                           });
@@ -232,11 +241,11 @@ class _MyHomePageState extends State<MyHomePage> {
                           }
                         }
                         if(noteExists) {
-                          existingNote.note = 'Voice Note: /app/${selectedContact.displayName.trim()}001.mp3';
+                          existingNote.note = 'Voice Note: /record/${selectedContact.displayName.trim()}001.mp3';
                         }
                         else
                         {
-                          selectedContact.notes.add(Note('Voice Note: /app/${selectedContact.displayName.trim()}001.mp3'));
+                          selectedContact.notes.add(Note('Voice Note: /record/${selectedContact.displayName.trim()}001.mp3'));
                         }
                         setState(() {
                           // Store the audio path for the selected contact

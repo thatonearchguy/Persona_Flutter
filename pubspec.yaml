@@ -19,6 +19,7 @@ dependencies:
   record_mp3: ^3.0.0
   path_provider: ^2.1.2
   installed_apps: ^1.5.0
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
@@ -29,3 +30,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/persona-app.png"
+  min_sdk_android: 21
